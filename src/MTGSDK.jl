@@ -4,7 +4,7 @@ using HTTP: get, Response
 using JSON: parse
 using Pipe
 
-export request, cards, sets, booster, types, subtypes, supertypes, formats
+export cards, sets, booster, types, subtypes, supertypes, formats
 
 ROOT="https://api.magicthegathering.io"
 VERSION="v1"
@@ -13,8 +13,12 @@ function _build_url(resource::AbstractString; id=nothing, query=nothing, raw=not
     url = "$ROOT/$version/$resource"
 
     id    !== nothing && ( url *= "/" * string(id)                                   )
-    raw   !== nothing && ( url *= raw                                                )
-    query !== nothing && ( url *= '?' * join(["$(k)=$(v)" for (k, v) in query], '&') )
+
+    if raw !== nothing
+        url *= raw
+    elseif query !== nothing
+        url *= '?' * join(["$(k)=$(v)" for (k, v) in query], '&')
+    end
 
     return url
 end
@@ -30,21 +34,21 @@ function _parse(resp::Response, take)
 end
 
 """
-    request(resource; <keyword arguments>) -> Dict{String,Any}
+    _request(resource; <keyword arguments>) -> Dict{String,Any}
 
-request to any resource.
+_request to any resource.
 
 example
 ```
-request("cards", id=386616)
+_request("cards", id=386616)
 ```
 """
-request(resource::AbstractString; take=(r)->r[resource], kw...) = @pipe _build_url(resource; kw...) |> get |> _parse(_, take)
+_request(resource::AbstractString; take=(r)->r[resource], kw...) = @pipe _build_url(resource; kw...) |> get |> _parse(_, take)
 
 """
     cards([id]; <keyword arguments>) -> Dict{String,Any}
 
-request to cards and cards/:id resource.
+_request to cards and cards/:id resource.
 
 example
 ```
@@ -54,13 +58,13 @@ cards(id=386616)
 cards(query=Dict("supertypes" => "legendary", "types" => "creature", "color" => "red"))
 ```
 """
-cards(; id=nothing, kw...)   = id === nothing ? request("cards"; kw...) : cards(id; kw...)
-cards(id; kw...) = request("cards"; id=id, take=(r)->r["card"], kw...)
+cards(; id=nothing, kw...)   = id === nothing ? _request("cards"; kw...) : cards(id; kw...)
+cards(id; kw...) = _request("cards"; id=id, take=(r)->r["card"], kw...)
 
 """
     sets([set]; <keyword arguments>) -> Dict{String,Any}
 
-request to sets and sets/:id resource.
+_request to sets and sets/:id resource.
 
 example
 ```
@@ -70,47 +74,47 @@ sets(set="rna")
 sets(query=Dict("supertypes" => "legendary", "types" => "creature", "color" => "red"))
 ```
 """
-sets(; kw...)  = request("sets"; kw...)
-sets(set; kw...)  = request("sets"; id=set, take=(r)->r["set"], kw...)
+sets(; kw...)  = _request("sets"; kw...)
+sets(set; kw...)  = _request("sets"; id=set, take=(r)->r["set"], kw...)
 
 """
     booster(set; <keyword arguments>) -> Dict{String,Any}
 
-request to sets/:id/booster resource.
+_request to sets/:id/booster resource.
 
 example
 ```
 booster("rna")
 ```
 """
-booster(set) = request("sets"; id=set, raw="/booster", take=(r)->r["cards"])
+booster(set) = _request("sets"; id=set, raw="/booster", take=(r)->r["cards"])
 
 """
     types(; <keyword arguments>) -> Dict{String,Any}
 
-request to types resource.
+_request to types resource.
 """
-types() = request("types")
+types() = _request("types")
 
 """
     subtypes(; <keyword arguments>) -> Dict{String,Any}
 
-request to subtypes resource.
+_request to subtypes resource.
 """
-subtypes() = request("subtypes")
+subtypes() = _request("subtypes")
 
 """
     supertypes(; <keyword arguments>) -> Dict{String,Any}
 
-request to supertypes resource.
+_request to supertypes resource.
 """
-supertypes() = request("supertypes")
+supertypes() = _request("supertypes")
 
 """
     formats(; <keyword arguments>) -> Dict{String,Any}
 
-request to formats resource.
+_request to formats resource.
 """
-formats() = request("formats")
+formats() = _request("formats")
 
 end # module
