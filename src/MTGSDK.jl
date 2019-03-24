@@ -4,7 +4,7 @@ using HTTP: get, Response
 using JSON: parse
 using Pipe
 
-export cards, sets, booster, types, subtypes, supertypes, formats
+export cards, sets, booster, types, subtypes, supertypes, formats, translate_to, translate_to_japanese
 
 ROOT="https://api.magicthegathering.io"
 VERSION="v1"
@@ -12,7 +12,7 @@ VERSION="v1"
 function _build_url(resource::AbstractString; id=nothing, query=nothing, raw=nothing, version=VERSION)
     url = "$ROOT/$version/$resource"
 
-    id    !== nothing && ( url *= "/" * string(id)                                   )
+    id !== nothing && ( url *= "/" * string(id) )
 
     if raw !== nothing
         url *= raw
@@ -34,7 +34,7 @@ function _parse(resp::Response, take)
 end
 
 """
-    _request(resource; <keyword arguments>) -> Dict{String,Any}
+    _request(resource; <keyword arguments>) -> ResponseBody (Dict or Array)
 
 _request to any resource.
 
@@ -46,7 +46,7 @@ _request("cards", id=386616)
 _request(resource::AbstractString; take=(r)->r[resource], kw...) = @pipe _build_url(resource; kw...) |> get |> _parse(_, take)
 
 """
-    cards([id]; <keyword arguments>) -> Dict{String,Any}
+    cards([id]; <keyword arguments>) -> ResponseBody (Dict or Array)
 
 _request to cards and cards/:id resource.
 
@@ -62,7 +62,7 @@ cards(; id=nothing, kw...)   = id === nothing ? _request("cards"; kw...) : cards
 cards(id; kw...) = _request("cards"; id=id, take=(r)->r["card"], kw...)
 
 """
-    sets([set]; <keyword arguments>) -> Dict{String,Any}
+    sets([set]; <keyword arguments>) -> ResponseBody (Dict or Array)
 
 _request to sets and sets/:id resource.
 
@@ -78,7 +78,7 @@ sets(; kw...)  = _request("sets"; kw...)
 sets(set; kw...)  = _request("sets"; id=set, take=(r)->r["set"], kw...)
 
 """
-    booster(set; <keyword arguments>) -> Dict{String,Any}
+    booster(set; <keyword arguments>) -> ResponseBody (Dict or Array)
 
 _request to sets/:id/booster resource.
 
@@ -90,31 +90,45 @@ booster("rna")
 booster(set) = _request("sets"; id=set, raw="/booster", take=(r)->r["cards"])
 
 """
-    types(; <keyword arguments>) -> Dict{String,Any}
+    types(; <keyword arguments>) -> ResponseBody (Dict or Array)
 
 _request to types resource.
 """
 types() = _request("types")
 
 """
-    subtypes(; <keyword arguments>) -> Dict{String,Any}
+    subtypes(; <keyword arguments>) -> ResponseBody (Dict or Array)
 
 _request to subtypes resource.
 """
 subtypes() = _request("subtypes")
 
 """
-    supertypes(; <keyword arguments>) -> Dict{String,Any}
+    supertypes(; <keyword arguments>) -> ResponseBody (Dict or Array)
 
 _request to supertypes resource.
 """
 supertypes() = _request("supertypes")
 
 """
-    formats(; <keyword arguments>) -> Dict{String,Any}
+    formats(; <keyword arguments>) -> ResponseBody (Dict or Array)
 
 _request to formats resource.
 """
 formats() = _request("formats")
+
+"""
+    translaete_to(language, card) -> translated_card
+
+if card has foreignNames and `language` field, merge same key and delete other languages.
+"""
+function translate_to(language::AbstractString, card)
+    haskey(card, "foreignNames") || return card
+    f = filter(foreign -> foreign["language"] == language, card["foreignNames"])
+    !isa(f, Array) && return card
+    @pipe deepcopy(card) |> delete!(_, "foreignNames") |> merge(_, f[1])
+end
+
+translate_to_japanese(card) = translate_to("Japanese", card)
 
 end # module

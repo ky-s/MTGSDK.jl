@@ -49,17 +49,36 @@ end
 end
 
 @testset "booster" begin
-    cards = Dict("cards" => [Dict("name" => "Black Lotus"), Dict("name" => "Mox Ruby")])
+    cards = Dict("cards" => [Dict("name" => "Black Lotus"), Dict("name" => "Mox Ruby")]) # mock
     HTTP.get(url) = HTTP.Response(JSON.json(cards))
 
     @test MTGSDK.booster("ktk") == cards["cards"]
 end
 
 @testset "other resouces" begin
-    HTTP.get(url) = HTTP.Response(JSON.json( reduce(merge, map(r->Dict(r=>r),("types", "subtypes", "supertypes", "formats"))) ))
+    HTTP.get(url) = HTTP.Response(JSON.json( reduce(merge, map(r->Dict(r=>r),("types", "subtypes", "supertypes", "formats"))) )) # mock
 
     @test MTGSDK.types()      == "types"
     @test MTGSDK.subtypes()   == "subtypes"
     @test MTGSDK.supertypes() == "supertypes"
     @test MTGSDK.formats()    == "formats"
+end
+
+@testset "translate_to" begin
+     card1 = Dict("name" => "OriginalName1", "flavor" => "OriginalFlavor1",
+          "foreignNames" => [
+                             Dict("language" => "Japanese", "name" => "日本語名1",    "flavor" => "日本語フレイバーテキスト1"   ),
+                             Dict("language" => "English",  "name" => "EnglishName1", "flavor" => "English Flavor Text1"        ),
+                            ]
+         )
+     card2 = Dict("name" => "OriginalName2", "flavor" => "OriginalFlavor2",
+          "foreignNames" => [
+                             Dict("language" => "Japanese", "name" => "日本語名2",    "flavor" => "日本語フレイバーテキスト2"   ),
+                             Dict("language" => "English",  "name" => "EnglishName2", "flavor" => "English Flavor Text2"        ),
+                            ]
+         )
+    cards = [ card1, card2 ]
+
+    @test MTGSDK.translate_to("English",  card1)["name"] == card1["foreignNames"][2]["name"]
+    @test MTGSDK.translate_to("Japanese", card1)["name"] == MTGSDK.translate_to_japanese(card1)["name"] == card1["foreignNames"][1]["name"]
 end
