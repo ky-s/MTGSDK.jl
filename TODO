@@ -1,0 +1,16 @@
+- API の pagination に対応する
+- 各 Response を専用の struct にする
+  { "name":"Narset, Enlightened Master",
+    "manaCost":"{3}{U}{R}{W}",
+    "cmc":6,
+    ...
+  }
+  ↓
+  struct Card
+    name     :: String
+    manaCost :: String
+    cmc      :: Integer
+    :
+  end
+
+- query を Pair の Array でも渡せるようにする
