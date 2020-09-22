@@ -7,12 +7,17 @@ MTGSDK for julia
 https://docs.magicthegathering.io/
 
 # Setup
-julia (open REPL)
+open REPL
+
+```
 ] (Package mode)
 
 pkg> add "HTTP.jl"
 pkg> add "JSON.jl"
 pkg> add "Pipe.jl"
+```
 
 # Testing
+```
 julia test/runtests.jl
+```
