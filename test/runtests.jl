@@ -1,27 +1,78 @@
 include("../src/MTGSDK.jl")
 
 using Test
-using HTTP
-using JSON
-using .MTGSDK
+import HTTP, JSON
+import .MTGSDK
 
-@testset "_build_url" begin
+@testset "base: build_url" begin
     baseurl = "$(MTGSDK.ROOT)/$(MTGSDK.VERSION)"
-    @test MTGSDK._build_url("cards") == "$baseurl/cards"
-    @test MTGSDK._build_url("cards", id=65535) == "$baseurl/cards/65535"
-    @test MTGSDK._build_url("cards", query=Dict("name" => "khans", "color" => "red,black")) == "$baseurl/cards?name=khans&color=red,black"
-    @test MTGSDK._build_url("sets", raw="?page=2&pageSize=10") == "$baseurl/sets?page=2&pageSize=10"
-    @test MTGSDK._build_url("cards", version="v2") == "$(MTGSDK.ROOT)/v2/cards"
+
+    @testset "no options" begin
+        url = MTGSDK.build_url("cards")
+        @test url == "$baseurl/cards"
+    end
+
+    @testset "id" begin
+        url = MTGSDK.build_url("cards", id=65535)
+        @test url == "$baseurl/cards/65535"
+    end
+
+    @testset "query" begin
+        url = MTGSDK.build_url("cards", query=Dict("name" => "khans", "color" => "red,black"))
+        @test url == "$baseurl/cards?name=khans&color=red,black"
+    end
+
+    @testset "raw" begin
+        url = MTGSDK.build_url("sets", raw="?page=2&pageSize=10")
+        @test url== "$baseurl/sets?page=2&pageSize=10"
+    end
+
+    @testset "version" begin
+        url = MTGSDK.build_url("cards", version="v2")
+        @test url == "$(MTGSDK.ROOT)/v2/cards"
+    end
 end
 
-@testset "_parse" begin
-    @test MTGSDK._parse(HTTP.Response(200, JSON.json(Dict("take" => "taken"))), (r) -> r["take"]) == "taken"
-    @test match(r"^400:", MTGSDK._parse(HTTP.Response(400, ""), +)) !== nothing
-    @test match(r"^403:", MTGSDK._parse(HTTP.Response(403, ""), +)) !== nothing
-    @test match(r"^404:", MTGSDK._parse(HTTP.Response(404, ""), +)) !== nothing
-    @test match(r"^500:", MTGSDK._parse(HTTP.Response(500, ""), +)) !== nothing
-    @test match(r"^503:", MTGSDK._parse(HTTP.Response(503, ""), +)) !== nothing
-    @test match(r"^418:", MTGSDK._parse(HTTP.Response(418, "I'm a tea pot."), +)) !== nothing
+@testset "base: generate_error" begin
+    @testset "400" begin
+        response = HTTP.Response(400, "")
+        error = MTGSDK.generate_error(response)
+        @test match( r"^400:", error.message) !== nothing
+        @test error.response == response
+    end
+
+    @testset "403" begin
+        error = MTGSDK.generate_error( HTTP.Response(403, "") )
+        @test match( r"^403:", error.message) !== nothing
+    end
+
+    @testset "404" begin
+        error = MTGSDK.generate_error( HTTP.Response(404, "") )
+        @test match( r"^404:", error.message) !== nothing
+    end
+
+    @testset "500" begin
+        error = MTGSDK.generate_error( HTTP.Response(500, "") )
+        @test match( r"^500:", error.message) !== nothing
+    end
+
+    @testset "other status code" begin
+        error = MTGSDK.generate_error( HTTP.Response(418, "I'm a tea pot.") )
+        @test match( r"^418:", error.message) !== nothing
+    end
+end
+
+@testset "base: parse_response" begin
+    @testset "success" begin
+        response = HTTP.Response(200, JSON.json( Dict("take" => "taken") ))
+        @test MTGSDK.parse_response(response, r -> r["take"]) == "taken"
+    end
+
+    @testset "failure" begin
+        response = HTTP.Response(400, "")
+        error = MTGSDK.parse_response(response, r -> r["take"])
+        @test error isa MTGSDK.ResponseError
+    end
 end
 
 @testset "cards" begin
